@@ -135,6 +135,39 @@ def encoder(cc):
     return EncoderElement(MIDI_CC_TYPE, CHANNEL, cc, Live.MidiMap.MapMode.absolute)
 
 
+class HighPassEncoder:
+    def __init__(self, cc):
+        self.encoder = encoder(cc)
+        self.last_scroll_time = 0
+        self.last_value = None
+        self.negative_scroll_threshold = 0.5  # time threshold in seconds for going back in opposite direction
+        self.positive_scroll_threshold = 0.05  # time threshold in seconds for quick scroll in the same direction
+        self.encoder.add_value_listener(self._on_value)
+
+    def add_value_listener(self, callback):
+        self._callback = callback
+
+    def _on_value(self, value):
+        if self._callback is None:
+            return
+
+        current_time = time.time()
+        time_since_last_scroll = current_time - self.last_scroll_time
+
+        # Scroll in the opposite direction
+        if value != self.last_value and time_since_last_scroll > self.negative_scroll_threshold:
+            self._callback(value)
+            self.last_scroll_time = current_time
+            self.last_value = value
+            return
+
+        # Quick scroll in the same direction
+        if value == self.last_value and time_since_last_scroll > self.positive_scroll_threshold:
+            self._callback(value)
+            self.last_scroll_time = current_time
+            self.last_value = value
+            return
+
 class XoneK2(ControlSurface):
     def __init__(self, c_instance, *a, **k):
         global g_logger
@@ -223,21 +256,25 @@ class XoneK2(ControlSurface):
                 self.session._bank_up()
             if value == 1:
                 self.session._bank_down()
-
-        enc = encoder(ENCODER_LR)
-        enc.add_value_listener(scroll_bank_vertically)
-
-        for i in range(NUM_TRACKS):
-            enc = encoder(ENCODERS[i])
-            enc.add_value_listener(scroll_bank_vertically)
-
         def scroll_bank_horizontally(value):
             if value == 127:
                 self.session._bank_left()
             if value == 1:
                 self.session._bank_right()
-        enc = encoder(ENCODER_LL)
+
+
+        enc = HighPassEncoder(ENCODER_LL)
         enc.add_value_listener(scroll_bank_horizontally)
+        enc = HighPassEncoder(ENCODER_LR)
+        enc.add_value_listener(scroll_bank_vertically)
+
+        for i in range(NUM_TRACKS):
+            enc = HighPassEncoder(ENCODERS[i])
+            if i % 2 == 0:
+                enc.add_value_listener(scroll_bank_horizontally)
+            else:
+                enc.add_value_listener(scroll_bank_vertically)
+
 
     def bind_clip_launch_buttons(self, scene,scene_index):
         for track_index in range(NUM_TRACKS):
@@ -248,6 +285,10 @@ class XoneK2(ControlSurface):
             clip_slot.set_stopped_value(0)
             clip_slot.set_started_value(64)
             clip_slot.set_launch_button(b)
+            if track_index == 0:
+                b = button(PUSH_ENCODER_LL)
+                b.add_value_listener(partial(clip_slot._do_launch_clip))
+
 
     def bind_detail_view_toggle(self):
         def _on_detail_toggle(value):
