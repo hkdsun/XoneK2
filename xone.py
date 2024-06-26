@@ -13,7 +13,7 @@ from _Framework.SessionComponent import SessionComponent
 from _Framework.SessionRecordingComponent import SessionRecordingComponent
 from _Framework.SliderElement import SliderElement
 from _Framework.TransportComponent import TransportComponent
-from _Framework.MixerComponent import MixerComponent
+from .mixer import MixerComponent
 
 
 g_logger = None
@@ -107,23 +107,22 @@ SECONDARY_LAYER = "LAYER3"
 ENCODERS = MIDI_MAPPING[DEFAULT_LAYER]["ENCODERS"] + MIDI_MAPPING[SECONDARY_LAYER]["ENCODERS"]
 PUSH_ENCODERS = MIDI_MAPPING[DEFAULT_LAYER]["PUSH_ENCODERS"] + MIDI_MAPPING[SECONDARY_LAYER]["PUSH_ENCODERS"]
 
-KNOBS1 = MIDI_MAPPING[DEFAULT_LAYER]["KNOBS1"] + MIDI_MAPPING[SECONDARY_LAYER]["KNOBS1"]
-KNOBS2 = MIDI_MAPPING[DEFAULT_LAYER]["KNOBS2"] + MIDI_MAPPING[SECONDARY_LAYER]["KNOBS2"]
-KNOBS3 = MIDI_MAPPING[DEFAULT_LAYER]["KNOBS3"] + MIDI_MAPPING[SECONDARY_LAYER]["KNOBS3"]
+# User assignable buttons
+USER_ASSIGNABLE_BUTTONS = MIDI_MAPPING[DEFAULT_LAYER]["BUTTONS2"] + MIDI_MAPPING[SECONDARY_LAYER]["BUTTONS2"]
+USER_ASSIGNABLE_KNOBS = MIDI_MAPPING[DEFAULT_LAYER]["KNOBS3"] + MIDI_MAPPING[SECONDARY_LAYER]["KNOBS3"]
 
-BUTTONS1 = MIDI_MAPPING[DEFAULT_LAYER]["BUTTONS1"] + MIDI_MAPPING[SECONDARY_LAYER]["BUTTONS1"]
-BUTTONS2 = MIDI_MAPPING[DEFAULT_LAYER]["BUTTONS2"] + MIDI_MAPPING[SECONDARY_LAYER]["BUTTONS2"]
-BUTTONS3 = MIDI_MAPPING[DEFAULT_LAYER]["BUTTONS3"] + MIDI_MAPPING[SECONDARY_LAYER]["BUTTONS3"]
+# DAW Transport buttons
+TRANSPORT_BUTTONS = MIDI_MAPPING[DEFAULT_LAYER]["BUTTONS3"] + MIDI_MAPPING[SECONDARY_LAYER]["BUTTONS3"]
 
-FADERS = MIDI_MAPPING[DEFAULT_LAYER]["FADERS"] + MIDI_MAPPING[SECONDARY_LAYER]["FADERS"]
-
-GRID1 = MIDI_MAPPING[DEFAULT_LAYER]["GRID1"] + MIDI_MAPPING[SECONDARY_LAYER]["GRID1"]
-GRID2 = MIDI_MAPPING[DEFAULT_LAYER]["GRID2"] + MIDI_MAPPING[SECONDARY_LAYER]["GRID2"]
-
-GRID3 = MIDI_MAPPING[DEFAULT_LAYER]["GRID3"]
-GRID4 = MIDI_MAPPING[DEFAULT_LAYER]["GRID4"]
-GRID5 = MIDI_MAPPING[SECONDARY_LAYER]["GRID3"]
-GRID6 = MIDI_MAPPING[SECONDARY_LAYER]["GRID4"]
+# Track controls
+SENDS_A_KNOBS = MIDI_MAPPING[DEFAULT_LAYER]["KNOBS1"] + MIDI_MAPPING[SECONDARY_LAYER]["KNOBS1"]
+SENDS_B_KNOBS = MIDI_MAPPING[DEFAULT_LAYER]["KNOBS2"] + MIDI_MAPPING[SECONDARY_LAYER]["KNOBS2"]
+LAUNCH_BUTTONS = MIDI_MAPPING[DEFAULT_LAYER]["GRID1"] + MIDI_MAPPING[SECONDARY_LAYER]["GRID1"]
+STOP_BUTTONS = MIDI_MAPPING[DEFAULT_LAYER]["GRID2"] + MIDI_MAPPING[SECONDARY_LAYER]["GRID2"]
+MUTE_BUTTONS = MIDI_MAPPING[DEFAULT_LAYER]["GRID3"] + MIDI_MAPPING[SECONDARY_LAYER]["GRID3"]
+ARM_BUTTONS = MIDI_MAPPING[DEFAULT_LAYER]["GRID4"] + MIDI_MAPPING[SECONDARY_LAYER]["GRID4"]
+SOLO_BUTTONS = MIDI_MAPPING[DEFAULT_LAYER]["BUTTONS1"] + MIDI_MAPPING[SECONDARY_LAYER]["BUTTONS1"]
+VOLUME_FADERS = MIDI_MAPPING[DEFAULT_LAYER]["FADERS"] + MIDI_MAPPING[SECONDARY_LAYER]["FADERS"]
 
 ENCODER_LL = MIDI_MAPPING[DEFAULT_LAYER]["ENCODER_LL"]
 ENCODER_LR = MIDI_MAPPING[DEFAULT_LAYER]["ENCODER_LR"]
@@ -152,8 +151,8 @@ def fader(notenr):
 def knob(cc):
     return EncoderElement(MIDI_CC_TYPE, CHANNEL, cc, Live.MidiMap.MapMode.absolute)
 
-def encoder(cc, map_mode=Live.MidiMap.MapMode.absolute):
-    return EncoderElement(MIDI_CC_TYPE, CHANNEL, cc, map_mode)
+def encoder(cc, map_mode=Live.MidiMap.MapMode.absolute, encoder_sensitivity=1.0):
+    return EncoderElement(MIDI_CC_TYPE, CHANNEL, cc, map_mode, encoder_sensitivity=encoder_sensitivity)
 
 
 class HighPassEncoder:
@@ -191,10 +190,8 @@ class XoneK2(ControlSurface):
             log('HK-DEBUG XoneK2 initialized')
 
     def init_scene_launch(self):
-        s_index = 0
-        scene = self.session.scene(s_index)
-        scene.name = 'Scene ' + str(s_index)
-
+        scene = self.session.scene(0)
+        scene.name = 'Scene 0'
 
         def _new(value):
             if value != 127:
@@ -218,10 +215,10 @@ class XoneK2(ControlSurface):
         scene.set_launch_button(button(S_BUTTON_LR))
 
         # Bind new, select, delete, and duplicate scene buttons
-        button(GRID6[0]).add_value_listener(_new)
-        button(GRID6[1]).add_value_listener(_delete)
-        button(GRID6[2]).add_value_listener(_duplicate)
-        self.session.set_stop_all_clips_button(button(GRID6[3]))
+        # button(GRID6[0]).add_value_listener(_new)
+        # button(GRID6[1]).add_value_listener(_delete)
+        # button(GRID6[2]).add_value_listener(_duplicate)
+        self.session.set_stop_all_clips_button(button(TRANSPORT_BUTTONS[3]))
 
         # Bind all the encoders to select the scene
         button(PUSH_ENCODER_LR).add_value_listener(partial(_select))
@@ -229,10 +226,8 @@ class XoneK2(ControlSurface):
         button(S_PUSH_ENCODER_LR).add_value_listener(partial(_select))
         button(S_PUSH_ENCODER_LL).add_value_listener(partial(_select))
 
-        self.bind_clip_launch_buttons(scene, s_index)
-
-        stop_buttons = [button(note_nr) for note_nr in BUTTONS3]
-        self.session.set_stop_track_clip_buttons(stop_buttons)
+        self.bind_clip_launch_buttons(scene, 0)
+        self.session.set_stop_track_clip_buttons([button(b) for b in STOP_BUTTONS])
 
 
     def init_session(self):
@@ -241,53 +236,40 @@ class XoneK2(ControlSurface):
 
         self.bind_session_navigation()
         self.bind_detail_view_toggle()
-        self.bind_session_view_toggle()
-        self.bind_browser_view_toggle()
+        # self.bind_session_view_toggle()
+        # self.bind_browser_view_toggle()
 
         self.session.update()
 
     def init_session_recording(self):
         self.session_recording = SessionRecordingComponent(ClipCreator())
-        self.session_recording.set_record_button(button(GRID4[2]))
+        self.session_recording.set_record_button(button(TRANSPORT_BUTTONS[2]))
 
     def init_transport(self):
-        def _on_tempo_encoder(value):
-            current_tempo = self.song().tempo
-            value = -1 if value > 64 else 1
-            self.song().tempo = max(60, min(200, current_tempo + value))
-
-        def _on_fine_tempo_encoder(value):
-            current_tempo = self.song().tempo
-            value = -1 if value > 64 else 1
-            self.song().tempo = max(60, min(200, current_tempo + value * 0.01))
-
         self.transport = TransportComponent()
-        self.transport.set_play_button(button(GRID4[0]))
+        self.transport.set_play_button(button(TRANSPORT_BUTTONS[0]))
         self.transport.set_stop_button(button(BUTTON_LR))
-        self.transport.set_metronome_button(button(GRID3[2]))
-        self.transport.set_record_button(button(GRID4[1]))
-        self.transport.set_tap_tempo_button(button(GRID5[0]))
-        self.transport.set_nudge_buttons(button(GRID5[2]), button(GRID5[1]))
-        self.transport.set_loop_button(button(GRID5[3]))
-
-        encoder(ENCODERS[0]).add_value_listener(_on_tempo_encoder)
-        encoder(ENCODERS[1]).add_value_listener(_on_fine_tempo_encoder)
-
+        self.transport.set_metronome_button(button(TRANSPORT_BUTTONS[6]))
+        self.transport.set_record_button(button(TRANSPORT_BUTTONS[1]))
         self.transport.update()
-
 
     def init_mixer(self):
         self.mixer = MixerComponent(num_tracks=NUM_TRACKS)
         self.mixer.id = 'Mixer'
 
-        self.mixer.set_volume_controls([fader(FADERS[i]) for i in range(NUM_TRACKS)])
+        log('HK-DEBUG init_mixer')
+        self.mixer.set_volume_controls([fader(VOLUME_FADERS[i]) for i in range(NUM_TRACKS)])
         for i in range(NUM_TRACKS):
-            self.mixer.channel_strip(i).set_send_controls([knob(KNOBS1[i]), knob(KNOBS2[i]), knob(KNOBS3[i])])
-        self.mixer.set_solo_buttons([button(BUTTONS1[i]) for i in range(NUM_TRACKS)])
-        self.mixer.set_mute_buttons([button(BUTTONS2[i]) for i in range(NUM_TRACKS)])
-        self.mixer.set_arm_buttons([button(GRID2[i]) for i in range(NUM_TRACKS)])
-        self.mixer.set_track_select_buttons([button(PUSH_ENCODERS[i]) for i in range(NUM_TRACKS)])
+            self.mixer.channel_strip(i).set_send_controls([knob(SENDS_A_KNOBS[i]), knob(SENDS_B_KNOBS[i])])
+            filter = self.mixer.track_filter(i)
+            enc = encoder(ENCODERS[i], Live.MidiMap.MapMode.relative_smooth_two_compliment, encoder_sensitivity=5.0)
+            enc.mapping_sensitivity = 5.0
+            reset_button = button(PUSH_ENCODERS[i])
+            filter.set_filter_controls(enc, reset_button)
 
+        self.mixer.set_solo_buttons([button(SOLO_BUTTONS[i]) for i in range(NUM_TRACKS)])
+        self.mixer.set_mute_buttons([button(MUTE_BUTTONS[i]) for i in range(NUM_TRACKS)])
+        self.mixer.set_arm_buttons([button(ARM_BUTTONS[i]) for i in range(NUM_TRACKS)])
         self.mixer.update()
 
     def init_undo_redo(self):
@@ -297,8 +279,8 @@ class XoneK2(ControlSurface):
         def _redo(_):
             if self.song().can_redo:
                 self.song().redo()
-        undo_button = button(GRID3[0])
-        redo_button = button(GRID3[1])
+        undo_button = button(TRANSPORT_BUTTONS[4])
+        redo_button = button(TRANSPORT_BUTTONS[5])
         undo_button.add_value_listener(_undo)
         redo_button.add_value_listener(_redo)
 
@@ -328,7 +310,7 @@ class XoneK2(ControlSurface):
 
     def bind_clip_launch_buttons(self, scene,scene_index):
         for track_index in range(NUM_TRACKS):
-            note_nr = GRID1[track_index]
+            note_nr = LAUNCH_BUTTONS[track_index]
             b = button(note_nr, name='Clip %d, %d button' % (scene_index, track_index))
             clip_slot = scene.clip_slot(track_index)
             clip_slot.name = 'Clip slot %d, %d' % (scene_index, track_index)
@@ -352,7 +334,7 @@ class XoneK2(ControlSurface):
                      self.application().view.hide_view('Browser')
                      return
 
-        detail_toggle = button(GRID3[3], name='Detail toggle')
+        detail_toggle = button(TRANSPORT_BUTTONS[7], name='Detail toggle')
         detail_toggle.add_value_listener(_on_detail_toggle)
 
     def bind_session_view_toggle(self):
@@ -365,9 +347,8 @@ class XoneK2(ControlSurface):
             else:
                 self.application().view.hide_view('Session')
 
-        # disable this for now
-        # session_toggle = button(GRID6[1], name='Session toggle')
-        # session_toggle.add_value_listener(_on_session_toggle)
+        session_toggle = button(TRANSPORT_BUTTONS[9999], name='Session toggle')
+        session_toggle.add_value_listener(_on_session_toggle)
 
     def bind_browser_view_toggle(self):
         def _on_browser_toggle(value):
@@ -379,5 +360,5 @@ class XoneK2(ControlSurface):
             else:
                 self.application().view.hide_view('Browser')
 
-        browser_toggle = button(GRID4[3], name='Browser toggle')
+        browser_toggle = button(TRANSPORT_BUTTONS[9999], name='Browser toggle')
         browser_toggle.add_value_listener(_on_browser_toggle)
