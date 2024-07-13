@@ -5,16 +5,16 @@ import time
 import Live
 import MidiRemoteScript
 from _Framework.ButtonElement import ButtonElement
+from _Framework.ButtonMatrixElement import ButtonMatrixElement
 from _Framework.ControlSurface import ControlSurface
 from _Framework.ClipCreator import ClipCreator
 from _Framework.EncoderElement import EncoderElement
 from _Framework.InputControlElement import *
-from _Framework.SessionComponent import SessionComponent
 from _Framework.SessionRecordingComponent import SessionRecordingComponent
 from _Framework.SliderElement import SliderElement
 from _Framework.TransportComponent import TransportComponent
 from .mixer import MixerComponent
-
+from .session import SessionComponent
 
 g_logger = None
 DEBUG = True
@@ -117,12 +117,13 @@ TRANSPORT_BUTTONS = MIDI_MAPPING[DEFAULT_LAYER]["BUTTONS3"] + MIDI_MAPPING[SECON
 # Track controls
 SENDS_A_KNOBS = MIDI_MAPPING[DEFAULT_LAYER]["KNOBS1"] + MIDI_MAPPING[SECONDARY_LAYER]["KNOBS1"]
 SENDS_B_KNOBS = MIDI_MAPPING[DEFAULT_LAYER]["KNOBS2"] + MIDI_MAPPING[SECONDARY_LAYER]["KNOBS2"]
+VOLUME_FADERS = MIDI_MAPPING[DEFAULT_LAYER]["FADERS"] + MIDI_MAPPING[SECONDARY_LAYER]["FADERS"]
+
+MUTE_BUTTONS = MIDI_MAPPING[DEFAULT_LAYER]["BUTTONS1"] + MIDI_MAPPING[SECONDARY_LAYER]["BUTTONS1"]
 LAUNCH_BUTTONS = MIDI_MAPPING[DEFAULT_LAYER]["GRID1"] + MIDI_MAPPING[SECONDARY_LAYER]["GRID1"]
 STOP_BUTTONS = MIDI_MAPPING[DEFAULT_LAYER]["GRID2"] + MIDI_MAPPING[SECONDARY_LAYER]["GRID2"]
-MUTE_BUTTONS = MIDI_MAPPING[DEFAULT_LAYER]["GRID3"] + MIDI_MAPPING[SECONDARY_LAYER]["GRID3"]
+SOLO_BUTTONS = MIDI_MAPPING[DEFAULT_LAYER]["GRID3"] + MIDI_MAPPING[SECONDARY_LAYER]["GRID3"]
 ARM_BUTTONS = MIDI_MAPPING[DEFAULT_LAYER]["GRID4"] + MIDI_MAPPING[SECONDARY_LAYER]["GRID4"]
-SOLO_BUTTONS = MIDI_MAPPING[DEFAULT_LAYER]["BUTTONS1"] + MIDI_MAPPING[SECONDARY_LAYER]["BUTTONS1"]
-VOLUME_FADERS = MIDI_MAPPING[DEFAULT_LAYER]["FADERS"] + MIDI_MAPPING[SECONDARY_LAYER]["FADERS"]
 
 ENCODER_LL = MIDI_MAPPING[DEFAULT_LAYER]["ENCODER_LL"]
 ENCODER_LR = MIDI_MAPPING[DEFAULT_LAYER]["ENCODER_LR"]
@@ -177,7 +178,7 @@ class XoneK2(ControlSurface):
         with self.component_guard():
             self._set_suppress_rebuild_requests(True)
             self.init_session()
-            self.init_session_recording()
+            # self.init_session_recording()
             self.init_transport()
             self.init_undo_redo()
             self.init_scene_launch()
@@ -185,7 +186,7 @@ class XoneK2(ControlSurface):
 
             self.set_highlighting_session_component(self.session)
             self.session.set_mixer(self.mixer)
-
+            self.session.update()
             self._set_suppress_rebuild_requests(False)
             log('HK-DEBUG XoneK2 initialized')
 
@@ -212,7 +213,7 @@ class XoneK2(ControlSurface):
             self.song().duplicate_scene(self.session.scene_offset())
 
         # Scene launch button
-        scene.set_launch_button(button(S_BUTTON_LR))
+        # scene.set_launch_button(button(S_BUTTON_LR))
 
         # Bind new, select, delete, and duplicate scene buttons
         # button(GRID6[0]).add_value_listener(_new)
@@ -226,7 +227,8 @@ class XoneK2(ControlSurface):
         button(S_PUSH_ENCODER_LR).add_value_listener(partial(_select))
         button(S_PUSH_ENCODER_LL).add_value_listener(partial(_select))
 
-        self.bind_clip_launch_buttons(scene, 0)
+        button_matrix = ButtonMatrixElement(rows=[[button(b) for b in LAUNCH_BUTTONS]], name="clip launch buttons")
+        self.session.set_clip_launch_buttons(button_matrix)
         self.session.set_stop_track_clip_buttons([button(b) for b in STOP_BUTTONS])
 
 
@@ -236,20 +238,19 @@ class XoneK2(ControlSurface):
 
         self.bind_session_navigation()
         self.bind_detail_view_toggle()
+        self.session.update()
         # self.bind_session_view_toggle()
         # self.bind_browser_view_toggle()
 
-        self.session.update()
-
-    def init_session_recording(self):
-        self.session_recording = SessionRecordingComponent(ClipCreator())
-        self.session_recording.set_record_button(button(TRANSPORT_BUTTONS[2]))
+    # def init_session_recording(self):
+    #     self.session_recording = SessionRecordingComponent(ClipCreator())
+        # self.session_recording.set_record_button(button(TRANSPORT_BUTTONS[2]))
 
     def init_transport(self):
         self.transport = TransportComponent()
         self.transport.set_play_button(button(TRANSPORT_BUTTONS[0]))
         self.transport.set_stop_button(button(BUTTON_LR))
-        self.transport.set_metronome_button(button(TRANSPORT_BUTTONS[6]))
+        self.transport.set_metronome_button(button(TRANSPORT_BUTTONS[2]))
         self.transport.set_record_button(button(TRANSPORT_BUTTONS[1]))
         self.transport.update()
 
@@ -270,6 +271,7 @@ class XoneK2(ControlSurface):
         self.mixer.set_solo_buttons([button(SOLO_BUTTONS[i]) for i in range(NUM_TRACKS)])
         self.mixer.set_mute_buttons([button(MUTE_BUTTONS[i]) for i in range(NUM_TRACKS)])
         self.mixer.set_arm_buttons([button(ARM_BUTTONS[i]) for i in range(NUM_TRACKS)])
+        self.mixer.set_new_track_button(button(TRANSPORT_BUTTONS[5]))
         self.mixer.update()
 
     def init_undo_redo(self):
@@ -280,9 +282,9 @@ class XoneK2(ControlSurface):
             if self.song().can_redo:
                 self.song().redo()
         undo_button = button(TRANSPORT_BUTTONS[4])
-        redo_button = button(TRANSPORT_BUTTONS[5])
+        # redo_button = button(TRANSPORT_BUTTONS[5])
         undo_button.add_value_listener(_undo)
-        redo_button.add_value_listener(_redo)
+        # redo_button.add_value_listener(_redo)
 
     def bind_session_navigation(self):
         def scroll_bank_vertically(value):
@@ -307,16 +309,6 @@ class XoneK2(ControlSurface):
         enc.add_value_listener(scroll_bank_vertically)
         enc = HighPassEncoder(S_ENCODER_LL)
         enc.add_value_listener(scroll_bank_vertically)
-
-    def bind_clip_launch_buttons(self, scene,scene_index):
-        for track_index in range(NUM_TRACKS):
-            note_nr = LAUNCH_BUTTONS[track_index]
-            b = button(note_nr, name='Clip %d, %d button' % (scene_index, track_index))
-            clip_slot = scene.clip_slot(track_index)
-            clip_slot.name = 'Clip slot %d, %d' % (scene_index, track_index)
-            clip_slot.set_stopped_value(0)
-            clip_slot.set_started_value(64)
-            clip_slot.set_launch_button(b)
 
     def bind_detail_view_toggle(self):
         def _on_detail_toggle(value):
