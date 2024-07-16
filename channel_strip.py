@@ -8,16 +8,40 @@ from __future__ import absolute_import, print_function, unicode_literals
 from itertools import chain
 from _Framework.ChannelStripComponent import ChannelStripComponent as ChannelstripComponentBase
 from _Framework.SubjectSlot import subject_slot
+from _Framework import Task
+from _Framework.Dependency import depends
+from _Framework.Util import nop
+
+
+
+import logging
+logger = logging.getLogger(__name__)
+MAX_ALLOWED_VOLUME = 0.85 # 0db
 
 class ChannelStripComponent(ChannelstripComponentBase):
-    def __init__(self, *a, **k):
+
+    @depends(show_message=nop)
+    def __init__(self, show_message=nop, *a, **k):
         (super(ChannelStripComponent, self).__init__)(*a, **k)
+        self._show_message = show_message
+        self._reset_volume_task = self._tasks.add(Task.run(self.reset_volume))
+        self._reset_volume_task.kill()
 
     def set_track(self, track):
         super(ChannelStripComponent, self).set_track(track)
         if self._track != None:
             self._on_volume_changed.subject = self._track.mixer_device.volume
 
+    def reset_volume(self):
+        if self._track.mixer_device.volume.value > MAX_ALLOWED_VOLUME:
+            logger.info("Resetting volume to 0db")
+            self._show_message("Resetting volume to 0db")
+            self._track.mixer_device.volume.value = MAX_ALLOWED_VOLUME
+
     @subject_slot("value")
     def _on_volume_changed(self):
         self.song().view.selected_track = self._track
+
+        # if volume is more than 0db, reset it to 0db
+        if self._track.mixer_device.volume.value > MAX_ALLOWED_VOLUME and self._reset_volume_task.is_killed:
+            self._reset_volume_task.restart()
