@@ -4,6 +4,7 @@ from _Framework.MixerComponent import MixerComponent as MixerComponentBase
 from .track_filter import TrackFilterComponent
 from _Framework.Control import ButtonControl
 from ableton.v2.base import liveobj_valid
+from .channel_strip import ChannelStripComponent
 
 import logging
 
@@ -24,6 +25,9 @@ class MixerComponent(MixerComponentBase):
         (super(MixerComponent, self).__init__)(num_tracks, *a, **k)
         list(map(self.register_components, self._track_filters))
         self.set_new_track_button = self.new_track_button.set_control_element
+
+    def _create_strip(self):
+        return ChannelStripComponent()
 
     def track_filter(self, index):
         return self._track_filters[index]

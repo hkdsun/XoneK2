@@ -184,7 +184,7 @@ class XoneK2(ControlSurface):
             self.init_scene_launch()
             self.init_mixer()
 
-            self.set_highlighting_session_component(self.session)
+            # self.set_highlighting_session_component(self.session)
             self.session.set_mixer(self.mixer)
             self.session.update()
             self._set_suppress_rebuild_requests(False)
@@ -227,8 +227,8 @@ class XoneK2(ControlSurface):
         button(S_PUSH_ENCODER_LR).add_value_listener(partial(_select))
         button(S_PUSH_ENCODER_LL).add_value_listener(partial(_select))
 
-        button_matrix = ButtonMatrixElement(rows=[[button(b) for b in LAUNCH_BUTTONS]], name="clip launch buttons")
-        self.session.set_clip_launch_buttons(button_matrix)
+        # button_matrix = ButtonMatrixElement(rows=[[button(b) for b in LAUNCH_BUTTONS]], name="clip launch buttons")
+        # self.session.set_clip_launch_buttons(button_matrix)
         self.session.set_stop_track_clip_buttons([button(b) for b in STOP_BUTTONS])
 
 

@@ -5,7 +5,7 @@ from _Generic.Devices import get_parameter_by_name
 from _Framework.ControlSurfaceComponent import ControlSurfaceComponent
 import _Framework.EncoderElement as EncoderElement
 from _Framework.Control import ButtonControl
-from _Framework.SubjectSlot import subject_slot
+from _Framework.SubjectSlot import subject_slot_group
 from ableton.v3.live import liveobj_valid
 
 import logging
@@ -34,10 +34,9 @@ class TrackFilterComponent(ControlSurfaceComponent):
             if self._track != None and liveobj_valid(self._track):
                 self.song().view.selected_track = self._track
             if self._device != None:
-                for parm in self._device.parameters:
-                    if parm.name == "Cutoff":
-                        parm.value = 63.5
-                        break
+                for param in self._device.parameters[1:]:
+                    if param.state in [0, 1]:
+                        param.value = param.default_value
             self._reset_button.turn_off()
 
     def on_enabled_changed(self):
@@ -54,12 +53,9 @@ class TrackFilterComponent(ControlSurfaceComponent):
             self._track.add_devices_listener(self._on_devices_changed)
         self._on_devices_changed()
 
-    @subject_slot("value")
-    def __on_parameter_value_changed(self):
-        value = self._TrackFilterComponent__on_parameter_value_changed.subject.value
-        if value > 60 and value < 67:
-            self._reset_button.turn_off()
-        else:
+    @subject_slot_group("value")
+    def __on_parameter_value_changed(self, parameter):
+        if parameter.value != parameter.default_value:
             self._reset_button.turn_on()
 
     def set_filter_controls(self, freq, reset_button):
@@ -81,7 +77,7 @@ class TrackFilterComponent(ControlSurfaceComponent):
 
                 parameter = None
                 for parm in self._device.parameters:
-                    if parm.name == "Cutoff":
+                    if parm.name == "Lowpass":
                         parameter = parm
                         break
                 if parameter is None:
@@ -89,7 +85,6 @@ class TrackFilterComponent(ControlSurfaceComponent):
 
                 if self._freq_control != None:
                     self._freq_control.connect_to(parameter)
-                    self._TrackFilterComponent__on_parameter_value_changed.subject = parameter
 
 
     def _on_devices_changed(self):
@@ -99,6 +94,7 @@ class TrackFilterComponent(ControlSurfaceComponent):
                 device = self._track.devices[-1 * (index + 1)]
                 if device.name == "Macro Filter+EQ":
                     self._device = device
+                    self._TrackFilterComponent__on_parameter_value_changed.replace_subjects(self._device.parameters)
                     break
         self.update()
 
