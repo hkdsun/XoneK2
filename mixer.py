@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, unicode_literals
 from builtins import map, range
 from _Framework.MixerComponent import MixerComponent as MixerComponentBase
 from .track_filter import TrackFilterComponent
-from _Framework.Control import ButtonControl
+from _Framework.Control import ButtonControl, control_list
 from ableton.v2.base import liveobj_valid
 from .channel_strip import ChannelStripComponent
 
@@ -11,13 +11,14 @@ import logging
 logger = logging.getLogger("XoneK2")
 
 class MixerComponent(MixerComponentBase):
-    new_track_button = ButtonControl()
+    new_track_button = control_list(ButtonControl)
 
+    RESERVED_TRACK = 'Utilities'
     STATIC_TRACKS = {
         'Maschine': {},
         'Instruments': {},
         'Loopers': {},
-        'MIDI Recorder': {},
+        RESERVED_TRACK: {}, # Dummy track for now until we need to expand static tracks
     }
 
     def __init__(self, num_tracks, *a, **k):
@@ -80,7 +81,10 @@ class MixerComponent(MixerComponentBase):
         for track in super(MixerComponent, self).tracks_to_use():
             if self.is_static_track(track):
                 # logger.info('Static track: %s', track.name)
-                static_tracks.insert(0, track)
+                if track.name == self.RESERVED_TRACK:
+                    static_tracks.append(track)
+                else:
+                    static_tracks.insert(0, track)
             else:
                 dynamic_tracks.append(track)
 

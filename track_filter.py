@@ -33,10 +33,15 @@ class TrackFilterComponent(ControlSurfaceComponent):
         if value == 127:
             if self._track != None and liveobj_valid(self._track):
                 self.song().view.selected_track = self._track
+
+            for send in self._track.mixer_device.sends:
+                send.value = 0
+
             if self._device != None:
                 for param in self._device.parameters[1:]:
                     if param.state in [0, 1]:
                         param.value = param.default_value
+
             self._reset_button.turn_off()
 
     def on_enabled_changed(self):

@@ -33,10 +33,12 @@ class ChannelStripComponent(ChannelstripComponentBase):
             self._on_volume_changed.subject = self._track.mixer_device.volume
 
     def reset_volume(self):
-        if self._track.mixer_device.volume.value > MAX_ALLOWED_VOLUME:
-            logger.info("Resetting volume to 0db")
-            self._show_message("Resetting volume to 0db")
-            self._track.mixer_device.volume.value = MAX_ALLOWED_VOLUME
+        # TODO: noop for now (it wasnt so useful)
+        return
+        # if self._track.mixer_device.volume.value > MAX_ALLOWED_VOLUME:
+        #     logger.info("Resetting volume to 0db")
+        #     self._show_message("Resetting volume to 0db")
+        #     self._track.mixer_device.volume.value = MAX_ALLOWED_VOLUME
 
     @subject_slot("value")
     def _on_volume_changed(self):
