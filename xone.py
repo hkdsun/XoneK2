@@ -262,11 +262,10 @@ class XoneK2(ControlSurface):
         def _undo(_):
             if self.song().can_undo:
                 self.song().undo()
-        def _redo(_):
-            if self.song().can_redo:
-                self.song().redo()
+
         undo_button = button(UNDO_BUTTON[0])
         undo_button.add_value_listener(_undo)
+
 
     def _on_layer_switch(self, layer, _value):
         layer = (layer + 1) % len(LAYER_SWITCH_BUTTONS) # Cycle through layers
