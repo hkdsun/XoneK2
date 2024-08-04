@@ -11,6 +11,7 @@ from _Framework.SubjectSlot import subject_slot
 from _Framework import Task
 from _Framework.Dependency import depends
 from _Framework.Util import nop
+from _Framework.Control import EncoderControl
 
 
 
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 MAX_ALLOWED_VOLUME = 0.85 # 0db
 
 class ChannelStripComponent(ChannelstripComponentBase):
+    volume_control = EncoderControl()
 
     @depends(show_message=nop)
     def __init__(self, show_message=nop, *a, **k):
@@ -40,9 +42,24 @@ class ChannelStripComponent(ChannelstripComponentBase):
         #     self._show_message("Resetting volume to 0db")
         #     self._track.mixer_device.volume.value = MAX_ALLOWED_VOLUME
 
+    def set_volume_control(self, control):
+        if self._volume_control != None:
+            self._volume_control.remove_value_listener(self._on_volume_control_touched)
+
+        super(ChannelStripComponent, self).set_volume_control(control)
+
+        if self._volume_control != None:
+            self._volume_control.add_value_listener(self._on_volume_control_touched)
+
+    def _on_volume_control_touched(self, value):
+        if self._track.name == "Master" or self._track == "Main":
+            return
+        self.song().view.selected_track = self._track
+        logger.info("Volume control touched")
+
     @subject_slot("value")
     def _on_volume_changed(self):
-        self.song().view.selected_track = self._track
+        # self.song().view.selected_track = self._track
 
         # if volume is more than 0db, reset it to 0db
         if self._track.mixer_device.volume.value > MAX_ALLOWED_VOLUME and self._reset_volume_task.is_killed:
