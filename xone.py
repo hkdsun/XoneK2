@@ -144,14 +144,13 @@ LAYER_SWITCH_BUTTONS      = midi_map_all_layers("R", "BUTTON_LL") # We will spy 
 
 # Left-side controls
 GLOBAL_STOP_BUTTON        = midi_map("L", AMBER_LAYER, "BUTTON_LR")
-UNDO_BUTTON               = midi_map("L", AMBER_LAYER, "BUTTONS3", cc_index=0)
 
 # Channel strip controls
 FILTER_ENCODERS           = midi_map("R", AMBER_LAYER, "ENCODERS")      + midi_map("L", AMBER_LAYER, "ENCODERS")      + midi_map("R", GREEN_LAYER, "ENCODERS")      + midi_map("R", RED_LAYER, "ENCODERS")
 FILTER_RESET_BUTTONS      = midi_map("R", AMBER_LAYER, "PUSH_ENCODERS") + midi_map("L", AMBER_LAYER, "PUSH_ENCODERS") + midi_map("R", GREEN_LAYER, "PUSH_ENCODERS") + midi_map("R", RED_LAYER, "PUSH_ENCODERS")
 SENDS_A_KNOBS             = midi_map("R", AMBER_LAYER, "KNOBS1")        + midi_map("L", AMBER_LAYER, "KNOBS1")        + midi_map("R", GREEN_LAYER, "KNOBS1")        + midi_map("R", RED_LAYER, "KNOBS1")
 SENDS_B_KNOBS             = midi_map("R", AMBER_LAYER, "KNOBS2")        + midi_map("L", AMBER_LAYER, "KNOBS2")        + midi_map("R", GREEN_LAYER, "KNOBS2")        + midi_map("R", RED_LAYER, "KNOBS2")
-VOLUME_FADERS             = midi_map("R", AMBER_LAYER, "FADERS")        + midi_map("L", AMBER_LAYER, "FADERS")        + midi_map("R", GREEN_LAYER, "FADERS")        + midi_map("R", RED_LAYER, "FADERS")
+VOLUME_FADERS             = midi_map("R", AMBER_LAYER, "KNOBS3")        + midi_map("L", AMBER_LAYER, "KNOBS3")        + midi_map("R", GREEN_LAYER, "KNOBS3")        + midi_map("R", RED_LAYER, "KNOBS3")
 MUTE_BUTTONS              = midi_map("R", AMBER_LAYER, "BUTTONS1")      + midi_map("L", AMBER_LAYER, "BUTTONS1")      + midi_map("R", GREEN_LAYER, "BUTTONS1")      + midi_map("R", RED_LAYER, "BUTTONS1")
 LAUNCH_BUTTONS            = midi_map("R", AMBER_LAYER, "GRID1")         + midi_map("L", AMBER_LAYER, "GRID1")         + midi_map("R", GREEN_LAYER, "GRID1")         + midi_map("R", RED_LAYER, "GRID1")
 STOP_BUTTONS              = midi_map("R", AMBER_LAYER, "GRID2")         + midi_map("L", AMBER_LAYER, "GRID2")         + midi_map("R", GREEN_LAYER, "GRID2")         + midi_map("R", RED_LAYER, "GRID2")
@@ -207,7 +206,6 @@ class XoneK2(ControlSurface):
             self._set_suppress_rebuild_requests(True)
             self.init_session()
             self.init_transport()
-            self.init_undo_redo()
             self.init_scene_launch()
             self.init_mixer()
             self.init_layer_switch()
@@ -257,15 +255,6 @@ class XoneK2(ControlSurface):
         self.mixer.set_arm_buttons([button(ARM_BUTTONS[i]) for i in range(NUM_TRACKS)])
         self.mixer.set_new_track_button([button(NEW_TRACK_BUTTON[0])])
         self.mixer.update()
-
-    def init_undo_redo(self):
-        def _undo(_):
-            if self.song().can_undo:
-                self.song().undo()
-
-        undo_button = button(UNDO_BUTTON[0])
-        undo_button.add_value_listener(_undo)
-
 
     def _on_layer_switch(self, layer, _value):
         layer = (layer + 1) % len(LAYER_SWITCH_BUTTONS) # Cycle through layers

@@ -55,7 +55,7 @@ class ChannelStripComponent(ChannelstripComponentBase):
         if self._track.name == "Master" or self._track == "Main":
             return
         self.song().view.selected_track = self._track
-        logger.info("Volume control touched")
+        logger.info("Volume control touched for track: %s" % self._track.name)
 
     @subject_slot("value")
     def _on_volume_changed(self):
