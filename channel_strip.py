@@ -52,6 +52,8 @@ class ChannelStripComponent(ChannelstripComponentBase):
             self._volume_control.add_value_listener(self._on_volume_control_touched)
 
     def _on_volume_control_touched(self, value):
+        if self._track == None:
+            return
         if self._track.name == "Master" or self._track == "Main":
             return
         self.song().view.selected_track = self._track
