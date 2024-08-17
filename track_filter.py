@@ -61,7 +61,8 @@ class TrackFilterComponent(ControlSurfaceComponent):
     @subject_slot_group("value")
     def __on_parameter_value_changed(self, parameter):
         if parameter.value != parameter.default_value:
-            self._reset_button.turn_on()
+            if self._reset_button != None:
+                self._reset_button.turn_on()
 
     def set_filter_controls(self, freq, reset_button):
         if self._device != None:

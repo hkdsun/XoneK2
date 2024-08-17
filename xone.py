@@ -148,14 +148,19 @@ GLOBAL_STOP_BUTTON        = midi_map("L", AMBER_LAYER, "BUTTON_LR")
 # Channel strip controls
 FILTER_ENCODERS           = midi_map("R", AMBER_LAYER, "ENCODERS")      + midi_map("L", AMBER_LAYER, "ENCODERS")      + midi_map("R", GREEN_LAYER, "ENCODERS")      + midi_map("R", RED_LAYER, "ENCODERS")
 FILTER_RESET_BUTTONS      = midi_map("R", AMBER_LAYER, "PUSH_ENCODERS") + midi_map("L", AMBER_LAYER, "PUSH_ENCODERS") + midi_map("R", GREEN_LAYER, "PUSH_ENCODERS") + midi_map("R", RED_LAYER, "PUSH_ENCODERS")
+
 SENDS_A_KNOBS             = midi_map("R", AMBER_LAYER, "KNOBS1")        + midi_map("L", AMBER_LAYER, "KNOBS1")        + midi_map("R", GREEN_LAYER, "KNOBS1")        + midi_map("R", RED_LAYER, "KNOBS1")
-SENDS_B_KNOBS             = midi_map("R", AMBER_LAYER, "KNOBS2")        + midi_map("L", AMBER_LAYER, "KNOBS2")        + midi_map("R", GREEN_LAYER, "KNOBS2")        + midi_map("R", RED_LAYER, "KNOBS2")
-VOLUME_FADERS             = midi_map("R", AMBER_LAYER, "FADERS")        + midi_map("L", AMBER_LAYER, "FADERS")        + midi_map("R", GREEN_LAYER, "FADERS")        + midi_map("R", RED_LAYER, "FADERS")
-MUTE_BUTTONS              = midi_map("R", AMBER_LAYER, "BUTTONS1")      + midi_map("L", AMBER_LAYER, "BUTTONS1")      + midi_map("R", GREEN_LAYER, "BUTTONS1")      + midi_map("R", RED_LAYER, "BUTTONS1")
-LAUNCH_BUTTONS            = midi_map("R", AMBER_LAYER, "GRID1")         + midi_map("L", AMBER_LAYER, "GRID1")         + midi_map("R", GREEN_LAYER, "GRID1")         + midi_map("R", RED_LAYER, "GRID1")
-STOP_BUTTONS              = midi_map("R", AMBER_LAYER, "GRID2")         + midi_map("L", AMBER_LAYER, "GRID2")         + midi_map("R", GREEN_LAYER, "GRID2")         + midi_map("R", RED_LAYER, "GRID2")
-SOLO_BUTTONS              = midi_map("R", AMBER_LAYER, "GRID3")         + midi_map("L", AMBER_LAYER, "GRID3")         + midi_map("R", GREEN_LAYER, "GRID3")         + midi_map("R", RED_LAYER, "GRID3")
-ARM_BUTTONS               = midi_map("R", AMBER_LAYER, "GRID4")         + midi_map("L", AMBER_LAYER, "GRID4")         + midi_map("R", GREEN_LAYER, "GRID4")         + midi_map("R", RED_LAYER, "GRID4")
+# SENDS_B_KNOBS             = midi_map("R", AMBER_LAYER, "KNOBS2")        + midi_map("L", AMBER_LAYER, "KNOBS2")        + midi_map("R", GREEN_LAYER, "KNOBS2")        + midi_map("R", RED_LAYER, "KNOBS2")
+
+INSTRUMENT_VOLUME_KNOBS   = midi_map("R", AMBER_LAYER, "KNOBS3")[0:3]
+LOOPER_VOLUME_KNOBS       = midi_map("R", AMBER_LAYER, "KNOBS2")
+# TODO: VOLUME_MATRIX_VOLUME_KNOBS
+MAIN_VOLUME_FADERS             = midi_map("L", AMBER_LAYER, "FADERS")        + midi_map("R", AMBER_LAYER, "FADERS")[0:3] +  [midi_map("R", AMBER_LAYER, "KNOBS3")[3]]       + midi_map("R", GREEN_LAYER, "FADERS")        + midi_map("R", RED_LAYER, "FADERS")
+
+SOLO_BUTTONS              = midi_map("L", AMBER_LAYER, "GRID2")         + midi_map("R", AMBER_LAYER, "GRID2")         + midi_map("R", GREEN_LAYER, "GRID2")         + midi_map("R", RED_LAYER, "GRID2")
+MUTE_BUTTONS              = midi_map("L", AMBER_LAYER, "GRID3")         + midi_map("R", AMBER_LAYER, "GRID3")         + midi_map("R", GREEN_LAYER, "GRID3")         + midi_map("R", RED_LAYER, "GRID3")
+ARM_BUTTONS               = midi_map("L", AMBER_LAYER, "GRID4")         + midi_map("R", AMBER_LAYER, "GRID4")         + midi_map("R", GREEN_LAYER, "GRID4")         + midi_map("R", RED_LAYER, "GRID4")
+
 
 
 
@@ -208,6 +213,8 @@ class XoneK2(ControlSurface):
             self.init_transport()
             self.init_scene_launch()
             self.init_mixer()
+            self.init_instrument_mixer()
+            self.init_loopers_mixer()
             self.init_layer_switch()
 
             self.session.set_mixer(self.mixer)
@@ -219,7 +226,6 @@ class XoneK2(ControlSurface):
         scene = self.session.scene(0)
         scene.name = 'Scene 0'
         self.session.set_stop_all_clips_button(button(STOP_ALL_CLIPS_BUTTONS[0]))
-        self.session.set_stop_track_clip_buttons([button(b) for b in STOP_BUTTONS])
 
 
     def init_session(self):
@@ -241,9 +247,9 @@ class XoneK2(ControlSurface):
         self.mixer.id = 'Mixer'
 
         log('HK-DEBUG init_mixer')
-        self.mixer.set_volume_controls([fader(VOLUME_FADERS[i]) for i in range(NUM_TRACKS)])
+        self.mixer.set_volume_controls([fader(MAIN_VOLUME_FADERS[i]) for i in range(NUM_TRACKS)])
         for i in range(NUM_TRACKS):
-            self.mixer.channel_strip(i).set_send_controls([knob(SENDS_A_KNOBS[i]), knob(SENDS_B_KNOBS[i])])
+            self.mixer.channel_strip(i).set_send_controls([knob(SENDS_A_KNOBS[i])])
             filter = self.mixer.track_filter(i)
             enc = encoder(FILTER_ENCODERS[i], Live.MidiMap.MapMode.relative_smooth_two_compliment, encoder_sensitivity=5.0)
             enc.mapping_sensitivity = 5.0
@@ -255,6 +261,20 @@ class XoneK2(ControlSurface):
         self.mixer.set_arm_buttons([button(ARM_BUTTONS[i]) for i in range(NUM_TRACKS)])
         self.mixer.set_new_track_button([button(NEW_TRACK_BUTTON[0])])
         self.mixer.update()
+
+    def init_instrument_mixer(self):
+        self.instrument_mixer = MixerComponent(num_tracks=4, static_tracks=["Instruments", "Maschine", "Loopers"])
+        self.instrument_mixer.id = 'InstrumentMixer'
+        log('HK-DEBUG init_instrument_mixer')
+        self.instrument_mixer.set_volume_controls([fader(knob) for knob in INSTRUMENT_VOLUME_KNOBS])
+        self.instrument_mixer.update()
+
+    def init_loopers_mixer(self):
+        self.loopers_mixer = MixerComponent(num_tracks=4, static_tracks=["Loop 1", "Loop 2", "Loop 3", "Loop 4"])
+        self.loopers_mixer.id = 'LoopersMatrix'
+        log('HK-DEBUG init_loopers_mixer')
+        self.loopers_mixer.set_volume_controls([fader(knob) for knob in LOOPER_VOLUME_KNOBS])
+        self.loopers_mixer.update()
 
     def _on_layer_switch(self, layer, _value):
         layer = (layer + 1) % len(LAYER_SWITCH_BUTTONS) # Cycle through layers

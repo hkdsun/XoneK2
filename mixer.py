@@ -13,16 +13,9 @@ logger = logging.getLogger("XoneK2")
 class MixerComponent(MixerComponentBase):
     new_track_button = control_list(ButtonControl)
 
-    RESERVED_TRACK = 'Utilities'
-    STATIC_TRACKS = {
-        'Maschine': {},
-        'Instruments': {},
-        'Loopers': {},
-        RESERVED_TRACK: {}, # Dummy track for now until we need to expand static tracks
-    }
-
-    def __init__(self, num_tracks, *a, **k):
+    def __init__(self, num_tracks, *a, static_tracks=[], **k):
         self._track_filters = [TrackFilterComponent() for _ in range(num_tracks)]
+        self.static_tracks = static_tracks
         (super(MixerComponent, self).__init__)(num_tracks, *a, **k)
         list(map(self.register_components, self._track_filters))
         self.set_new_track_button = self.new_track_button.set_control_element
@@ -38,15 +31,14 @@ class MixerComponent(MixerComponentBase):
         track = self.song().create_audio_track()
         logger.info('New track created: %s', track.name)
 
-        if not track.can_be_armed:
-            return
 
         for i in range(len(track.available_input_routing_types)):
+            logger.info('Available input routing type: %s', track.available_input_routing_types[i].display_name)
             if track.available_input_routing_types[i].display_name == 'Instruments':
                 track.input_routing_type = track.available_input_routing_types[i]
                 break
 
-        track.arm = True
+        self.arm(track)
 
         all_tracks = self.tracks(self.song())
         except_midi_and_new_track = filter(lambda t: t != track and t.name != 'MIDI Sender', all_tracks)
@@ -72,30 +64,16 @@ class MixerComponent(MixerComponentBase):
             else:
                 return False
 
-        return any(map(lambda pattern: match(pattern), self.STATIC_TRACKS.keys()))
+        return any(map(lambda pattern: match(pattern), self.static_tracks))
 
     def tracks_to_use(self):
-        static_tracks = []
-        dynamic_tracks = []
-
+        tracks = []
         for track in super(MixerComponent, self).tracks_to_use():
-            if self.is_static_track(track):
-                # logger.info('Static track: %s', track.name)
-                if track.name == self.RESERVED_TRACK:
-                    static_tracks.append(track)
-                else:
-                    static_tracks.insert(0, track)
-            else:
-                dynamic_tracks.append(track)
-
-        return static_tracks + dynamic_tracks
-
-    def toggle_fold(self, track):
-        if is_group_track(track):
-            track.fold_state = not track.fold_state
-            return True
-        return False
-
+            if len(self.static_tracks) == 0:
+                tracks.append(track)
+            elif self.is_static_track(track):
+                tracks.append(track)
+        return tracks
 
     def can_be_armed(self, track):
         if liveobj_valid(track):
