@@ -140,16 +140,16 @@ RECORD_BUTTONS            = midi_map_all_layers("R", "BUTTONS3", cc_index=1)
 METRO_BUTTONS             = midi_map_all_layers("R", "BUTTONS3", cc_index=2)
 STOP_ALL_CLIPS_BUTTONS    = midi_map_all_layers("R", "BUTTONS3", cc_index=3)
 PLAY_BUTTONS              = midi_map_all_layers("R", "BUTTON_LR")
-LAYER_SWITCH_BUTTONS      = midi_map_all_layers("R", "BUTTON_LL") # We will spy on this button to switch transport buttons
+LAYER_SWITCH_BUTTONS      = midi_map_all_layers("R", "BUTTON_LL") # We will spy on this button to switch above buttons
 
 # Left-side controls
 GLOBAL_STOP_BUTTON        = midi_map("L", AMBER_LAYER, "BUTTON_LR")
 
 # Channel strip controls
-FILTER_ENCODERS           = midi_map("R", AMBER_LAYER, "ENCODERS")      + midi_map("L", AMBER_LAYER, "ENCODERS")      + midi_map("R", GREEN_LAYER, "ENCODERS")      + midi_map("R", RED_LAYER, "ENCODERS")
-FILTER_RESET_BUTTONS      = midi_map("R", AMBER_LAYER, "PUSH_ENCODERS") + midi_map("L", AMBER_LAYER, "PUSH_ENCODERS") + midi_map("R", GREEN_LAYER, "PUSH_ENCODERS") + midi_map("R", RED_LAYER, "PUSH_ENCODERS")
+FILTER_ENCODERS           = midi_map("L", AMBER_LAYER, "ENCODERS")      + midi_map("R", AMBER_LAYER, "ENCODERS")      + midi_map("R", GREEN_LAYER, "ENCODERS")      + midi_map("R", RED_LAYER, "ENCODERS")
+FILTER_RESET_BUTTONS      = midi_map("L", AMBER_LAYER, "PUSH_ENCODERS") + midi_map("R", AMBER_LAYER, "PUSH_ENCODERS") + midi_map("R", GREEN_LAYER, "PUSH_ENCODERS") + midi_map("R", RED_LAYER, "PUSH_ENCODERS")
 
-SENDS_A_KNOBS             = midi_map("R", AMBER_LAYER, "KNOBS1")        + midi_map("L", AMBER_LAYER, "KNOBS1")        + midi_map("R", GREEN_LAYER, "KNOBS1")        + midi_map("R", RED_LAYER, "KNOBS1")
+SENDS_A_KNOBS             = midi_map("L", AMBER_LAYER, "KNOBS1")        + midi_map("R", AMBER_LAYER, "KNOBS1")        + midi_map("R", GREEN_LAYER, "KNOBS1")        + midi_map("R", RED_LAYER, "KNOBS1")
 # SENDS_B_KNOBS             = midi_map("R", AMBER_LAYER, "KNOBS2")        + midi_map("L", AMBER_LAYER, "KNOBS2")        + midi_map("R", GREEN_LAYER, "KNOBS2")        + midi_map("R", RED_LAYER, "KNOBS2")
 
 INSTRUMENT_VOLUME_KNOBS   = midi_map("R", AMBER_LAYER, "KNOBS3")[0:3]
