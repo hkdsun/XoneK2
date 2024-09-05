@@ -60,6 +60,8 @@ class ChannelStripComponent(ChannelstripComponentBase):
 
     @subject_slot("value")
     def _on_volume_changed(self):
+        if self._track == None:
+            return
         # self.song().view.selected_track = self._track
 
         # if volume is more than 0db, reset it to 0db
